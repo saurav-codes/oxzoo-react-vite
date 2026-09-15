@@ -35,5 +35,5 @@ health_url = "http://127.0.0.1:9102/health"
 
 [[domains]]
 name = "react-vite.oxzoo.sorv.dev"
-tls = false
+tls = true
 spa = true
