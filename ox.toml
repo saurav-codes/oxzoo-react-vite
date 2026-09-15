@@ -1,0 +1,39 @@
+# ox deploy manifest for oxzoo-react-vite.
+# nginx serves dist/ from the current release with an index.html fallback;
+# only /api and /health proxy to the web process.
+
+name = "oxzoo-react-vite"
+branch = "main"
+runtime = "node"
+framework = "generic"
+package_manager = "pnpm"
+port = 9102
+environment_file = "/etc/ox/apps/oxzoo-react-vite.env"
+
+required_packages = ["nodejs"]
+
+[[apt_sources]]
+name = "nodesource"
+url = "https://deb.nodesource.com/node_22.x"
+suite = "nodistro"
+components = ["main"]
+key_url = "https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+
+[frontend]
+dist = "dist"
+api_paths = ["/api", "/health"]
+
+[[processes]]
+name = "web"
+command = "node server/index.js"
+readiness = "http://127.0.0.1:{port}/health"
+
+[deploy]
+install = ["corepack", "pnpm", "install", "--frozen-lockfile"]
+build = ["corepack", "pnpm", "run", "build"]
+health_url = "http://127.0.0.1:9102/health"
+
+[[domains]]
+name = "react-vite.oxzoo.sorv.dev"
+tls = false
+spa = true
