@@ -5,10 +5,8 @@
 name = "oxzoo-react-vite"
 branch = "main"
 runtime = "node"
-framework = "generic"
 package_manager = "pnpm"
 port = 9102
-environment_file = "/etc/ox/projects/oxzoo-react-vite.env"
 
 required_packages = ["nodejs"]
 
