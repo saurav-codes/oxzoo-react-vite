@@ -24,7 +24,7 @@ One variable, two paths:
 
 ## Deploy with ox
 
-1. Add the repo in the ox dashboard: paste the clone URL `https://github.com/saurav-codes/oxzoo-react-vite.git`.
+1. Add the repo in the ox dashboard: paste the clone URL `git@github.com:saurav-codes/oxzoo-react-vite.git`.
 2. In the Environment editor, set `GREETING_TAG` (for example `v1`).
 3. Press **Deploy**. ox runs `corepack pnpm install --frozen-lockfile`, then `corepack pnpm run build`, starts `node server/index.js`, and waits for `http://127.0.0.1:9102/health` to return `ok`.
 
