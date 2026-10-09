@@ -2,37 +2,73 @@
 
 Deployed with [ox](https://deploywithox.com): deploy a repo to your own server with one command, no Docker. [Docs](https://deploywithox.com/docs) · [Guide for this stack](https://deploywithox.com/docs/guides/react-vite)
 
-An official ox deploy example: a React 18 single-page app built with Vite 5, backed by an Express 4 API, deployed to a single Ubuntu VPS by the [ox](https://deploywithox.com) control plane from one `ox.toml` manifest at the repo root. ox runs the install and build steps, starts `node server/index.js` as a systemd process, and configures nginx to serve the built `dist/` folder statically while proxying only `/api` and `/health` to the Node process.
+An [ox](https://deploywithox.com) deploy example: a React 18 SPA (Vite 5) with an Express 4 API and pnpm, deployed to your own Ubuntu server. systemd runs Express, and Caddy serves the built SPA with an `index.html` fallback while sending only `/api` and `/health` to Express, so one variable powers both halves of the demo.
 
 ## Stack
 
-| Layer | Tool | Role |
-|---|---|---|
-| Frontend | React 18 + Vite 5 | SPA built to `dist/`, served by nginx |
-| API | Express 4 | `GET /api/greeting` and `GET /health`, binds `127.0.0.1:9102` |
-| Package manager | pnpm 9 via corepack | lockfile (`pnpm-lock.yaml`) is committed |
-| Deploy | ox | `ox.toml` defines processes, frontend, domain |
+| Layer | Tool | Version |
+| ----- | ---- | ------- |
+| Frontend | React | 18 |
+| Bundler | Vite | 5 |
+| API | Express | 4 |
+| Package manager | pnpm | 9.15.9 (`packageManager` in `package.json`) |
+| Runtime | Node.js | 24 (ox's default; mise installs it) |
+
+## ox.toml
+
+```toml
+# Express API + React SPA with pnpm (packageManager pins pnpm).
+
+[app]
+health = "/health"
+
+[static]
+dir = "dist"
+spa = true
+api = ["/api", "/health"]
+```
+
+ox detects `pnpm install --frozen-lockfile` from `pnpm-lock.yaml`, the pnpm version from `packageManager`, and `pnpm run build` and `pnpm run start` (`node server/index.js`) from `package.json`.
 
 ## Environment flow
 
-One variable, two paths:
+1. **Run time (API):** `server/index.js` reads `process.env.GREETING_TAG` on every `GET /api/greeting` and returns `hello world oxzoo-react-vite_<GREETING_TAG>`.
+2. **Build time (SPA):** `vite.config.js` sets `envPrefix: ["GREETING_", "VITE_"]`, so `client/src/App.jsx` reads `import.meta.env.GREETING_TAG` and Vite bakes it into `dist/`.
 
-**`GREETING_TAG`**
-
-- **Runtime path (API):** `server/index.js` reads `process.env.GREETING_TAG` on every request to `GET /api/greeting`. A restart with a new value is enough to change it.
-- **Build-time path (SPA):** `vite.config.js` sets `envPrefix: ["GREETING_", "VITE_"]`, so any `GREETING_*` variable in the build environment is exposed to `import.meta.env`. `client/src/App.jsx` renders `import.meta.env.GREETING_TAG`, which is baked into the bundle during `pnpm run build`. No duplicated `VITE_GREETING_TAG` is needed.
-
-**Set `GREETING_TAG` in the ox Environment editor BEFORE the first deploy.** The SPA value is baked during the deploy build step, so changing it later requires a redeploy; the API value updates as soon as the process restarts. `.env.example` documents the variable with a placeholder; real values live in the ox dashboard, never in git.
+ox sets your variables before the build, and changing one with `ox vars set` redeploys, which rebuilds the SPA.
 
 ## Deploy with ox
 
-1. Add the repo in the ox dashboard: paste the clone URL `git@github.com:saurav-codes/oxzoo-react-vite.git`.
-2. In the Environment editor, set `GREETING_TAG` (for example `v1`).
-3. Press **Deploy**. ox runs `corepack pnpm install --frozen-lockfile`, then `corepack pnpm run build`, starts `node server/index.js`, and waits for `http://127.0.0.1:9102/health` to return `ok`.
+```sh
+curl -fsSL https://deploywithox.com/install.sh | sh
+ox login
+ox new https://github.com/saurav-codes/oxzoo-react-vite
+printf 'GREETING_TAG=demo\n' | ox review oxzoo-react-vite --from-file - --wait
+```
+
+The plan, offline:
+
+```console
+$ ox check .
+ox check . (manifest: ox.toml)
+
+  app.start                  pnpm run start                                       detected:package.json
+  app.health                 /health                                              declared
+  static.dir                 dist                                                 declared
+  static.spa                 true                                                 declared
+  static.api                 /api, /health                                        declared
+  build.install              pnpm install --frozen-lockfile                       detected:pnpm-lock.yaml
+  build.commands[0]          pnpm run build                                       detected:package.json
+  tools.node                 24                                                   default
+  tools.pnpm                 9.15.9                                               detected:package.json
+
+  Provided by ox: PORT, HOST, OX_ENV, OX_PROJECT, OX_RELEASE, OX_DATA_DIR, PUBLIC_URL, PUBLIC_HOST
+  Set on the dashboard before the first deploy: GREETING_TAG
+
+Ready to deploy.
+```
 
 ## Expected output
-
-Visiting the domain shows the project heading plus the two labeled lines:
 
 ```
 oxzoo-react-vite
@@ -40,18 +76,10 @@ frontend: hello world oxzoo-react-vite_<GREETING_TAG>
 backend: hello world oxzoo-react-vite_<GREETING_TAG>
 ```
 
-`<GREETING_TAG>` is whatever you set in the Environment editor. `backend:` shows `loading` until the fetch resolves, and an error message if `/api/greeting` fails.
-
-## How nginx fits
-
-ox configures nginx with `spa = true`: it serves `dist/` from the current release with `try_files $uri $uri/ /index.html`, so deep links fall back to the SPA entry. Only the `[frontend].api_paths` prefixes `/api` and `/health` are proxied to the web process on `127.0.0.1:9102`; everything else is static files.
-
 ## Local development
 
-```bash
+```sh
 npx -y pnpm@9 install
-GREETING_TAG=localtest npx -y pnpm@9 run build   # bakes GREETING_TAG into dist/
+GREETING_TAG=localtest npx -y pnpm@9 run build
 GREETING_TAG=localtest PORT=9102 node server/index.js
 ```
-
-Pass env inline per the commands above; never commit a real `.env`.
