@@ -1,6 +1,8 @@
 # oxzoo-react-vite
 
-An official ox deploy example: a React 18 single-page app built with Vite 5, backed by an Express 4 API, deployed to a single Ubuntu VPS by the [ox](https://github.com/saurav-codes/vps-ctl) control plane from one `ox.toml` manifest at the repo root. ox runs the install and build steps, starts `node server/index.js` as a systemd process, and configures nginx to serve the built `dist/` folder statically while proxying only `/api` and `/health` to the Node process.
+Deployed with [ox](https://deploywithox.com): deploy a repo to your own server with one command, no Docker. [Docs](https://deploywithox.com/docs) · [Guide for this stack](https://deploywithox.com/docs/guides/react-vite)
+
+An official ox deploy example: a React 18 single-page app built with Vite 5, backed by an Express 4 API, deployed to a single Ubuntu VPS by the [ox](https://deploywithox.com) control plane from one `ox.toml` manifest at the repo root. ox runs the install and build steps, starts `node server/index.js` as a systemd process, and configures nginx to serve the built `dist/` folder statically while proxying only `/api` and `/health` to the Node process.
 
 ## Stack
 
